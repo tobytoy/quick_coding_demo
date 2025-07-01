@@ -1,0 +1,5 @@
+{
+  "name": "React 俄羅斯方塊",
+  "description": "一個使用 React、TypeScript 和 Tailwind CSS 製作的經典俄羅斯方塊遊戲。享受這個懷舊的方塊消除樂趣！",
+  "requestFramePermissions": []
+}

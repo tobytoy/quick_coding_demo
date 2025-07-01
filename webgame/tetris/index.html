@@ -1,21 +1,31 @@
+
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Tetris Game</title>
-  <link rel="stylesheet" href="style.css" />
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React 俄羅斯方塊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        touch-action: none;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "@heroicons/react/": "https://esm.sh/@heroicons/react@^2.2.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
 </head>
-<body>
-  <h1>Tetris</h1>
-  <p>Controls:</p>
-  <ul>
-    <li><strong>Arrow Left</strong>: Move left</li>
-    <li><strong>Arrow Right</strong>: Move right</li>
-    <li><strong>Arrow Up</strong>: Rotate</li>
-    <li><strong>Arrow Down</strong>: Drop faster</li>
-  </ul>
-  <div id="score">Score: 0</div>
-  <canvas id="tetris" width="240" height="400"></canvas>
-  <script src="script.js"></script>
-</body>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>
