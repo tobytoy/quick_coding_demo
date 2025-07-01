@@ -1,0 +1,7 @@
+streamlit
+streamlit-webrtc
+tensorflow
+tensorflow-hub
+opencv-python-headless
+av
+numpy
