@@ -1,0 +1,10 @@
+streamlit
+openai-whisper
+ffmpeg-python
+opencv-python-headless
+scikit-image
+google-generativeai
+numpy
+noisereduce
+soundfile
+

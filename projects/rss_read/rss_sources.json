@@ -1,0 +1,29 @@
+[
+  {
+    "name": "阮一峰的網絡日誌",
+    "url": "https://feeds.feedburner.com/ruanyifeng",
+    "category": "技術、網路趨勢"
+  },
+  {
+    "name": "少數派",
+    "url": "https://sspai.com/feed",
+    "category": "數位生活、效率工具"
+  },
+  {
+    "name": "愛范兒",
+    "url": "https://www.ifanr.com/feed",
+    "category": "科技新聞"
+  },
+  {
+    "name": "V2EX",
+    "url": "https://www.v2ex.com/index.xml",
+    "category": "技術社群討論"
+  },
+  {
+    "name": "酷壳 – CoolShell",
+    "url": "https://coolshell.cn/feed",
+    "category": "軟體開發、工程文化"
+  }
+]
+
+
