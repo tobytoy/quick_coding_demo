@@ -201,7 +201,7 @@ with col2:
             if info['duration']:
                 minutes = info['duration'] // 60
                 seconds = info['duration'] % 60
-                st.write(f"**時長：** {minutes:02d}:{seconds:02d}")
+                st.write(f"**時長：** {minutes}:{seconds}")
             
             if info['view_count']:
                 st.write(f"**觀看次數：** {info['view_count']:,}")
