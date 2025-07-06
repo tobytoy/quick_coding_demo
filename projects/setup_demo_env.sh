@@ -39,5 +39,10 @@ fi
 echo "🚀 建立新的虛擬環境：$ENV_NAME"
 "$HIGHEST_PYTHON" -m venv "$ENV_NAME"
 
+# 啟用虛擬環境並更新 pip
+echo "📦 啟用環境並升級 pip..."
+source "$ENV_NAME/bin/activate"
+python -m pip install --upgrade pip
+
 echo "✅ 環境建立完成！請使用以下指令啟動："
 echo "source $ENV_NAME/bin/activate"

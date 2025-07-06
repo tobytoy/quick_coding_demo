@@ -258,6 +258,8 @@ tmp/
 temp/
 *.tmp
 
+# 忽略 Kotlin/JVM 編譯後的 JAR 檔案
+*.jar
 
 # For Demo
 package-lock.json
