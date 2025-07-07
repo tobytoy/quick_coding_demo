@@ -243,6 +243,65 @@ coverage/
 dist/
 build/
 
+
+# Flutter/Dart/Pub
+.dart_tool/
+.packages
+.pub/
+build/
+flutter_*.png
+generated_plugin_registrant.dart
+
+# Web build
+web/main.dart.js
+web/index.html
+web/assets/
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+android/.idea/
+
+# iOS
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Pods/
+ios/.symlinks/
+ios/Runner.xcworkspace/
+ios/build/
+ios/.idea/
+
+# macOS
+macos/Flutter/ephemeral/
+macos/build/
+
+# Linux
+linux/flutter/ephemeral/
+linux/build/
+
+# Windows
+windows/flutter/ephemeral/
+windows/build/
+
+# VS Code
+.vscode/
+
+# IntelliJ
+.idea/
+*.iml
+
+# Others
+*.log
+*.tmp
+*.swp
+*.lock
+*.DS_Store
+
+
+
 # IDE/editor folders
 .vscode/
 .idea/
