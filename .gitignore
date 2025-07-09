@@ -298,9 +298,6 @@ windows/build/
 *.tmp
 *.swp
 *.lock
-*.DS_Store
-
-
 
 # IDE/editor folders
 .vscode/
