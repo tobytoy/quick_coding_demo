@@ -119,18 +119,16 @@ def setup_driver():
     """設定 Chrome WebDriver"""
     chrome_options = Options()
     chrome_options.binary_location = "/usr/bin/google-chrome"
-    # chrome_options.add_argument("--headless")  # 無頭模式
     chrome_options.add_argument("--headless=new")
 
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--hide-scrollbars")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     
-    # service = Service(ChromeDriverManager().install())
-    # driver = webdriver.Chrome(service=service, options=chrome_options)
-    service = Service('./chromedriver')
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
     return driver
 
 
@@ -144,12 +142,16 @@ def scrape_salary_chart(driver, salary, category, key, progress_placeholder, sta
         wait = WebDriverWait(driver, 30)
         
         # 輸入薪資
-        salary_input = wait.until(EC.presence_of_element_located((By.NAME, "ctl00$ContentPlaceHolder1$txtSalary")))
+        salary_input = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.ID, "salary"))
+        )
         salary_input.clear()
         salary_input.send_keys(str(salary))
         
         # 選擇比較對象 (全體受僱員工)
-        compare_select = wait.until(EC.element_to_be_clickable((By.NAME, "ctl00$ContentPlaceHolder1$ddlCompare")))
+        compare_select = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.ID, "selectKinds"))
+        )
         compare_select.click()
         
         # 選擇全體受僱員工選項 (value="0")
@@ -158,74 +160,46 @@ def scrape_salary_chart(driver, salary, category, key, progress_placeholder, sta
         select_compare.select_by_value("0")
         
         # 選擇資料年 (112年)
-        year_select = wait.until(EC.element_to_be_clickable((By.NAME, "ctl00$ContentPlaceHolder1$ddlYear")))
+        year_select = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.ID, "selectYear"))
+        )
         select_year = Select(year_select)
         select_year.select_by_value("112")
         
         # 點擊查詢按鈕
-        query_button = wait.until(EC.element_to_be_clickable((By.NAME, "ctl00$ContentPlaceHolder1$btnQuery")))
+        query_button = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "button.answered"))
+        )
         query_button.click()
         
         # 等待並處理可能出現的彈窗
         time.sleep(3)
         try:
             # 尋找並點擊確認按鈕 (如果彈窗存在)
-            confirm_button = driver.find_element(By.XPATH, "//button[contains(text(), '確認')]")
-            if confirm_button.is_displayed():
-                confirm_button.click()
-                time.sleep(2)
+            confirm_btn = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "//div[contains(@class,'textBoard')]//button[normalize-space(.//span)='確認']")
+                )
+            )
+            confirm_btn.click()
         except:
             pass  # 如果沒有彈窗就繼續
         
         # 等待圖表載入
-        # time.sleep(3)
-        wait.until(EC.visibility_of_element_located((By.ID, "ContentPlaceHolder1_divChart")))
-        chart_element = driver.find_element(By.ID, "ContentPlaceHolder1_divChart")
+        time.sleep(3)
+        
+        rect = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "rect.highcharts-background"))
+        )
 
-        
-        # 尋找圖表容器
-        try:
-            # 嘗試多種可能的圖表元素選擇器
-            chart_selectors = [
-                "div[id*='Chart']",
-                "div[id*='chart']", 
-                "canvas",
-                "svg",
-                ".chart-container",
-                "#ContentPlaceHolder1_divChart"
-            ]
-            
-            chart_element = None
-            for selector in chart_selectors:
-                try:
-                    chart_element = driver.find_element(By.CSS_SELECTOR, selector)
-                    if chart_element.is_displayed():
-                        break
-                except:
-                    continue
-            
-            if chart_element is None:
-                # 如果找不到特定圖表元素，截取整個頁面內容區域
-                chart_element = driver.find_element(By.TAG_NAME, "body")
-        
-        except Exception as e:
-            status_placeholder.warning(f"⚠️ 無法找到圖表元素，將截取整個頁面: {str(e)}")
-            chart_element = driver.find_element(By.TAG_NAME, "body")
-        
-        # 建立 salary 資料夾
-        # salary_dir = os.path.join(os.path.dirname(__file__), "salary")
-        # if not os.path.exists(salary_dir):
-        # os.makedirs(salary_dir, exist_ok=True)
-
+        # 捲動到畫面中央（必要時）
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", rect)
+    
         # 儲存截圖
         filename = f"{category}_{key}_{salary}.png"
         filepath = os.path.join(salary_dir, filename)
-        chart_element.screenshot(filepath)
+        rect.screenshot(filepath)
         
-        print("元素位置:", chart_element.location)
-        print("元素大小:", chart_element.size)
-
-
         status_placeholder.success(f"✅ 成功儲存: {filename}")
         return True
         
