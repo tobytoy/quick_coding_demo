@@ -118,6 +118,7 @@ if json_data:
 def setup_driver():
     """設定 Chrome WebDriver"""
     chrome_options = Options()
+    chrome_options.binary_location = "/usr/bin/google-chrome"
     # chrome_options.add_argument("--headless")  # 無頭模式
     chrome_options.add_argument("--headless=new")
 
@@ -126,7 +127,9 @@ def setup_driver():
     # chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
     
-    service = Service(ChromeDriverManager().install())
+    # service = Service(ChromeDriverManager().install())
+    # driver = webdriver.Chrome(service=service, options=chrome_options)
+    service = Service('./chromedriver')
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
