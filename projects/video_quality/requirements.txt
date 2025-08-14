@@ -1,0 +1,4 @@
+pandas
+streamlit
+image-quality
+opencv-python-headless
