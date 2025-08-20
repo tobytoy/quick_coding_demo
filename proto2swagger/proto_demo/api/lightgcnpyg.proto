@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package recommender;
+
+option go_package = "example.com/recommender/gen;gen";
+
+service RecommendService {
+  rpc GetRecommendations(RecommendationRequest) returns (RecommendationResponse);
+}
+
+message RecommendationRequest {
+  uint64 uid = 1;                          // UID
+  repeated uint64 watchlist = 2;           // WATCHLIST, 長度 20
+  repeated float watchtime = 3;            // WATCHTIME, 長度 20
+  repeated uint64 candidateids = 4;        // CANDIDATEIDS, 長度 1000
+}
+
+message RecommendationResponse {
+  repeated uint64 postids = 1;             // POSTIDS, 長度 100
+}
