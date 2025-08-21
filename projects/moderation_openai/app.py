@@ -1,206 +1,115 @@
-import os
-import cv2
-import time
-import base64
-import requests
-import numpy as np
-from PIL import Image
 import streamlit as st
 from openai import OpenAI
+import cv2
+import base64
+import io
+from PIL import Image
+import tempfile
+import os
 
-
+# 初始化 OpenAI client（請先設定環境變數 OPENAI_API_KEY）
 client = OpenAI()
 
+st.title("🎞️ 上傳影片單張畫面內容分級 (Moderation) Demo")
+st.caption("上傳影片檔 + 指定偵號（0 起算）。若超出範圍，會提示最大可用偵號。影像會送到 OpenAI `omni-moderation-latest` 進行圖片審核。")
 
-def is_image_url(url):
-    image_extensions = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"]
-    return any(url.lower().endswith(ext) for ext in image_extensions)
+# --- 使用者輸入 ---
+uploaded_file = st.file_uploader("請上傳影片檔 (mp4/mov/avi)", type=["mp4", "mov", "avi"])
+frame_idx = st.number_input("要分析的偵號（0-based）", min_value=0, step=1, value=0, help="偵號從 0 開始，最大值為 總偵數-1")
 
-def download_image(url, save_path="check_img"):
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(save_path, "wb") as f:
-            f.write(response.content)
-        return save_path
-    return None
+run = st.button("擷取並審核該偵")
 
-def check_image_url(image_url):
-    # Download image from URL
-    response = requests.get(image_url)
-    if response.status_code != 200:
-        print("❌ 無法下載圖片，請確認 URL 是否正確")
-        return
+if run:
+    if not uploaded_file:
+        st.error("請先上傳影片檔")
+        st.stop()
 
-    # Get image content and convert to base64
-    image_data = response.content
-    encoded_image = base64.b64encode(image_data).decode("utf-8")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmpfile:
+        tmpfile.write(uploaded_file.read())
+        video_path = tmpfile.name
 
-    # Determine image format from URL or response headers
-    content_type = response.headers.get("Content-Type", "image/png")
-    if "jpeg" in content_type:
-        mime_type = "image/jpeg"
-    elif "jpg" in content_type:
-        mime_type = "image/jpeg"
-    elif "png" in content_type:
-        mime_type = "image/png"
-    else:
-        mime_type = "image/png"
-
-    # Prepare input string for Moderation API
-    input_string = f"data:{mime_type};base64,{encoded_image}"
-
-    # Call Moderation API
-    moderation_response = client.moderations.create(
-        model="omni-moderation-latest",
-        input=input_string
-    )
-
-    result = moderation_response.results[0]
-    flagged = result.flagged
-    categories = result.categories
-
-    if flagged:
-        print("⚠️ 圖片可能包含敏感內容：")
-        for category, is_flagged in vars(categories).items():
-            if is_flagged:
-                print(f"- {category}")
-    else:
-        print("✅ 圖片安全")
-
-
-def moderate_image(image_url):
-    # with open(image_path, "rb") as image_file:
-    #     encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
-
-    response = client.moderations.create(
-        model="omni-moderation-latest",
-        input=[
-            # {"type": "text", "text": "...text to classify goes here..."},
-            {
-                "type": "image_url",
-                "image_url": {
-                    "url": image_url,
-                }
-            },
-        ],
-    )
-    # time.sleep(1000)
-
-    result = response.results[0]
-    flagged = result.flagged
-    categories = result.categories
-
-    return flagged, vars(categories)
-
-def extract_video_info(video_path):
+    # 讀取影片資訊
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        return None
+        st.error("無法開啟影片檔。")
+        st.stop()
 
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    duration = frame_count / fps if fps else 0
+    fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
+    duration = (frame_count / fps) if fps > 0 else None
 
+    st.info(
+        f"偵數：{frame_count}，FPS：{fps:.2f}" + (f"，長度：約 {duration:.2f} 秒" if duration else "")
+    )
+
+    if frame_count <= 0:
+        st.error("無法取得影片偵數，可能是影片格式不支援或檔案損壞。")
+        st.stop()
+
+    max_idx = frame_count - 1
+    req_idx = int(frame_idx)
+
+    if req_idx < 0 or req_idx > max_idx:
+        st.error(f"偵號超出範圍：你輸入 {req_idx}，允許 0 ~ {max_idx}（最大能在第 {max_idx} 偵）。")
+        st.stop()
+
+    # 跳到指定偵並擷取
+    cap.set(cv2.CAP_PROP_POS_FRAMES, req_idx)
+    ok, frame = cap.read()
     cap.release()
-    return width, height, fps, duration, frame_count
 
-def extract_frames(video_path, frame_indices):
-    cap = cv2.VideoCapture(video_path)
-    frames = []
-    for idx in frame_indices:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
-        ret, frame = cap.read()
-        if ret:
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frames.append((idx, Image.fromarray(frame_rgb)))
-    cap.release()
-    return frames
+    if not ok or frame is None:
+        st.error("讀取該偵失敗。")
+        st.stop()
 
-st.title("OpenAI Moderation Tool")
+    # BGR -> RGB，顯示畫面
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    timestamp = (req_idx / fps) if fps > 0 else None
+    st.image(
+        frame_rgb,
+        caption=(f"第 {req_idx} 偵（約 {timestamp:.2f} 秒）" if timestamp is not None else f"第 {req_idx} 偵"),
+        use_column_width=True,
+    )
 
-tab1, tab2 = st.tabs(["Image Moderation", "Video Frame Analysis"])
+    # 轉成 PNG 並以 data URL 傳給 Moderation API
+    pil_img = Image.fromarray(frame_rgb)
+    buf = io.BytesIO()
+    pil_img.save(buf, format="PNG")
+    png_bytes = buf.getvalue()
+    data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode("utf-8")
 
+    with st.spinner("送至 OpenAI Moderation 進行影像審核…"):
+        mod = client.moderations.create(
+            model="omni-moderation-latest",
+            input=[
+                {
+                    "type": "image_url",
+                    "image_url": {"url": data_url},
+                }
+            ],
+        )
 
-import requests
+    # 顯示結果
+    st.subheader("🔍 Moderation 分析結果")
+    try:
+        res = mod.results[0]
+    except Exception:
+        res = mod["results"][0] if isinstance(mod, dict) else mod
+    st.json(res)
 
-def is_image_url(url):
-    image_extensions = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"]
-    return any(url.lower().endswith(ext) for ext in image_extensions)
+    # 友善摘要（依分數排列）
+    try:
+        categories = getattr(res, "categories", None) or res.get("categories", {})
+        scores = getattr(res, "category_scores", None) or res.get("category_scores", {})
+        ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+        if ranked:
+            st.markdown("**Top 類別分數：**")
+            for k, v in ranked[:8]:
+                flagged = categories.get(k, False)
+                bullet = "⚠️" if flagged else "•"
+                st.write(f"{bullet} {k}: {v:.3f}")
+    except Exception:
+        pass
 
-def download_image(url, save_path="check_img"):
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(save_path, "wb") as f:
-            f.write(response.content)
-        return save_path
-    return None
-
-with tab1:
-    image_url = st.text_input("Enter image URL:")
-    if image_url:
-        if is_image_url(image_url):
-            downloaded_path = download_image(image_url, "check_img.png")
-            if downloaded_path:
-                st.image(downloaded_path, caption="Downloaded Image", use_column_width=True)
-                flagged, categories = moderate_image(image_url)
-                if flagged:
-                    st.warning("⚠️ Image may contain sensitive content:")
-                    for category, is_flagged in categories.items():
-                        if is_flagged:
-                            st.write(f"- {category}")
-                else:
-                    st.success("✅ Image is safe")
-            else:
-                st.error("Failed to download image.")
-        else:
-            st.error("URL does not appear to be an image.")
-
-# with tab1:
-#     image_url = st.text_input("Enter image url:")
-#     if image_url:
-#     if image_path and os.path.exists(image_path):
-#         st.image(image_path, caption="Uploaded Image", use_container_width=True)
-#         flagged, categories = moderate_image(image_path)
-#         if flagged:
-#             st.warning("⚠️ Image may contain sensitive content:")
-#             for category, is_flagged in categories.items():
-#                 if is_flagged:
-#                     st.write(f"- {category}")
-#         else:
-#             st.success("✅ Image is safe")
-
-with tab2:
-    video_path = st.text_input("Enter video path:")
-    if video_path and os.path.exists(video_path):
-        info = extract_video_info(video_path)
-        if info:
-            width, height, fps, duration, frame_count = info
-            st.write(f"Resolution: {width}x{height}")
-            st.write(f"FPS: {fps}")
-            st.write(f"Duration: {duration:.2f} seconds")
-            st.write(f"Total Frames: {frame_count}")
-
-            frame_input = st.text_input("Enter frame indices to analyze (comma-separated):")
-            if frame_input:
-                try:
-                    frame_indices = [int(x.strip()) for x in frame_input.split(",")]
-                    frames = extract_frames(video_path, frame_indices)
-                    for idx, frame_img in frames:
-                        st.image(frame_img, caption=f"Frame {idx}", use_container_width=True)
-                        # Save frame temporarily to analyze
-                        temp_path = f"temp_frame_{idx}.png"
-                        frame_img.save(temp_path)
-                        flagged, categories = moderate_image(temp_path)
-                        os.remove(temp_path)
-                        if flagged:
-                            st.warning(f"⚠️ Frame {idx} may contain sensitive content:")
-                            for category, is_flagged in categories.items():
-                                if is_flagged:
-                                    st.write(f"- {category}")
-                        else:
-                            st.success(f"✅ Frame {idx} is safe")
-                except ValueError:
-                    st.error("Invalid frame indices. Please enter comma-separated integers.")
-
+st.divider()
+st.caption("⚠️ 僅供教學示範。請確保你有合法權限上傳並分析影片檔。OpenAI Moderation 模型支援影像與文字輸入（`omni-moderation-latest`）。")
