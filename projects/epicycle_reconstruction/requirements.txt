@@ -1,0 +1,4 @@
+scipy
+streamlit
+matplotlib
+streamlit-drawable-canvas
